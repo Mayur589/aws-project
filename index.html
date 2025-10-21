@@ -1,0 +1,108 @@
+<!doctype html>
+<html>
+  <head>
+    <title>2D to 3D Converter</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        max-width: 600px;
+        margin: 50px auto;
+        padding: 20px;
+      }
+      .upload-container {
+        border: 2px dashed #ccc;
+        padding: 30px;
+        text-align: center;
+        border-radius: 10px;
+      }
+      button {
+        background-color: #4caf50;
+        color: white;
+        padding: 15px 30px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 16px;
+        margin-top: 20px;
+      }
+      button:hover {
+        background-color: #45a049;
+      }
+      #status {
+        margin-top: 20px;
+        padding: 10px;
+        border-radius: 5px;
+      }
+      .success {
+        background-color: #d4edda;
+        color: #155724;
+      }
+      .error {
+        background-color: #f8d7da;
+        color: #721c24;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>2D Image to 3D Mesh Converter</h1>
+    <div class="upload-container">
+      <input type="file" id="imageInput" accept="image/jpeg,image/png" />
+      <button onclick="uploadImage()">Upload & Convert</button>
+    </div>
+    <div id="status"></div>
+
+    <script>
+      const API_URL =
+        "https://si7isj93lf.execute-api.eu-north-1.amazonaws.com/prod";
+
+      async function uploadImage() {
+        const fileInput = document.getElementById("imageInput");
+        const statusDiv = document.getElementById("status");
+
+        if (!fileInput.files[0]) {
+          statusDiv.className = "error";
+          statusDiv.textContent = "Please select an image first";
+          return;
+        }
+
+        const file = fileInput.files[0];
+        statusDiv.textContent = "Getting upload URL...";
+
+        try {
+          // Step 1: Get presigned URL from Lambda
+          const response = await fetch(API_URL, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+          });
+
+          const data = await response.json();
+          const uploadUrl = data.uploadUrl;
+
+          // Step 2: Upload file to S3 using presigned URL
+          statusDiv.textContent = "Uploading image...";
+
+          const uploadResponse = await fetch(uploadUrl, {
+            method: "PUT",
+            body: file,
+            headers: {
+              "Content-Type": file.type,
+            },
+          });
+
+          if (uploadResponse.ok) {
+            statusDiv.className = "success";
+            statusDiv.textContent =
+              "Upload successful! Processing started. File ID: " + data.fileId;
+          } else {
+            throw new Error("Upload failed");
+          }
+        } catch (error) {
+          statusDiv.className = "error";
+          statusDiv.textContent = "Error: " + error.message;
+        }
+      }
+    </script>
+  </body>
+</html>
