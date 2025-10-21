@@ -136,7 +136,7 @@
             log(`🔗 API URL: ${API_URL}`);
             
             try {
-                // Step 1: Fetch presigned POST data from Lambda
+                // Step 1: Fetch presigned POST data from Lambda (no body needed)
                 log('🌐 Fetching presigned POST from API Gateway...');
                 const apiResponse = await fetch(API_URL, {
                     method: 'POST',
@@ -155,38 +155,40 @@
                 
                 const apiData = await apiResponse.json();
                 log('✅ API Success - Parsing response');
-                log(`🆔 File ID: ${apiData.fileId}`);
-                log(`📄 Filename: ${apiData.filename}`);
+                log(`🆔 File ID: ${apiData.fileId || 'N/A'}`);
+                log(`📄 Filename: ${apiData.filename || 'N/A'}`);
                 
-                // Validate the response structure
+                // Validate response - must have uploadData with url and fields
                 if (!apiData.uploadData || !apiData.uploadData.url || !apiData.uploadData.fields) {
-                    log('❌ Invalid API response structure: ' + JSON.stringify(apiData, null, 2));
-                    throw new Error('Invalid response from server - missing upload data');
+                    log('❌ Invalid API response: ' + JSON.stringify(apiData, null, 2));
+                    throw new Error('Invalid response from server - missing uploadData structure');
                 }
                 
                 const { url, fields } = apiData.uploadData;
-                log(`🔗 S3 URL: ${url}`);
-                log('📋 POST Fields:');
+                log(`🔗 S3 POST URL: ${url}`);
+                log('📋 S3 Fields:');
                 Object.keys(fields).forEach(key => {
-                    log(`  - ${key}: ${fields[key].substring(0, 30)}...`);
+                    const value = fields[key];
+                    const displayValue = value.length > 30 ? value.substring(0, 30) + '...' : value;
+                    log(`  - ${key}: ${displayValue}`);
                 });
                 
-                // Step 2: Prepare FormData
+                // Step 2: Prepare FormData for S3 POST
                 updateStatus('⏳ Preparing upload data...', 'info');
                 const formData = new FormData();
                 
-                // Add all POST fields
+                // Add all fields to FormData
                 Object.entries(fields).forEach(([key, value]) => {
                     formData.append(key, value);
                 });
                 
-                // Add the file LAST (important for S3)
+                // Add file as 'file' field (S3 expects this name)
                 formData.append('file', file);
-                log('📦 FormData prepared with file');
+                log('📦 FormData ready with file attached');
                 
-                // Step 3: Upload to S3
+                // Step 3: POST to S3 with FormData (no headers needed - browser sets multipart/form-data)
                 updateStatus('⏳ Uploading to S3...', 'info');
-                log('☁️ Posting to S3...');
+                log('☁️ Sending POST to S3...');
                 
                 const s3Response = await fetch(url, {
                     method: 'POST',
@@ -199,21 +201,25 @@
                 log(`📄 S3 Response Body: ${s3Text}`);
                 
                 if (s3Response.ok || s3Response.status === 204) {
-                    log('🎉 Upload SUCCESS!');
-                    updateStatus(`✅ Success! File: ${apiData.filename}`, 'success');
-                    log(`🔗 Uploaded to: ${apiData.filename}`);
-                    log(`🆔 Use ID: ${apiData.fileId} for processing`);
+                    log('🎉 S3 Upload SUCCESS!');
+                    updateStatus(`✅ Success! File: ${apiData.filename || 'uploaded'}`, 'success');
+                    log(`🔗 Stored as: ${apiData.filename || 'unknown path'}`);
+                    log(`🆔 Processing ID: ${apiData.fileId || 'N/A'}`);
+                    
+                    // Reset file input
+                    fileInput.value = '';
                 } else {
-                    log(`❌ S3 Upload Failed`);
-                    throw new Error(`S3 failed: ${s3Response.status} - ${s3Text}`);
+                    log(`❌ S3 Upload Failed: ${s3Response.status}`);
+                    throw new Error(`S3 rejected upload: ${s3Response.status} - ${s3Text}`);
                 }
                 
             } catch (error) {
                 log(`💥 ERROR: ${error.message}`);
                 updateStatus(`❌ ${error.message}`, 'error');
-                console.error('Full error:', error);
+                console.error('Upload error details:', error);
             } finally {
                 uploadBtn.disabled = false;
+                updateStatus('', ''); // Clear status
             }
         }
     </script>
