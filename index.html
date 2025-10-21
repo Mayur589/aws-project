@@ -56,53 +56,60 @@
         "https://si7isj93lf.execute-api.eu-north-1.amazonaws.com/prod/upload";
 
       async function uploadImage() {
-        const fileInput = document.getElementById("imageInput");
-        const statusDiv = document.getElementById("status");
-
-        if (!fileInput.files[0]) {
-          statusDiv.className = "error";
-          statusDiv.textContent = "Please select an image first";
-          return;
-        }
-
-        const file = fileInput.files[0];
-        statusDiv.textContent = "Getting upload URL...";
-
-        try {
-          // Step 1: Get presigned URL from Lambda
-          const response = await fetch(API_URL, {
-            method: "POST",
+    const fileInput = document.getElementById('imageInput');
+    const statusDiv = document.getElementById('status');
+    
+    if (!fileInput.files[0]) {
+        statusDiv.className = 'error';
+        statusDiv.textContent = 'Please select an image first';
+        return;
+    }
+    
+    const file = fileInput.files[0];
+    statusDiv.textContent = 'Getting upload URL...';
+    
+    try {
+        // Step 1: Get presigned URL from Lambda
+        const response = await fetch(API_URL, {
+            method: 'POST',
             headers: {
-              "Content-Type": "application/json",
-            },
-          });
-
-          const data = await response.json();
-          const uploadUrl = data.uploadUrl;
-
-          // Step 2: Upload file to S3 using presigned URL
-          statusDiv.textContent = "Uploading image...";
-
-          const uploadResponse = await fetch(uploadUrl, {
-            method: "PUT",
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        if (!response.ok) {
+            throw new Error(`Failed to get upload URL: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        console.log('Got presigned URL:', data);
+        
+        // Step 2: Upload file directly to S3 using presigned URL
+        statusDiv.textContent = 'Uploading image to S3...';
+        
+        const uploadResponse = await fetch(data.uploadUrl, {
+            method: 'PUT',
             body: file,
             headers: {
-              "Content-Type": file.type,
-            },
-          });
-
-          if (uploadResponse.ok) {
-            statusDiv.className = "success";
-            statusDiv.textContent =
-              "Upload successful! Processing started. File ID: " + data.fileId;
-          } else {
-            throw new Error("Upload failed");
-          }
-        } catch (error) {
-          statusDiv.className = "error";
-          statusDiv.textContent = "Error: " + error.message;
+                'Content-Type': 'image/jpeg'
+            }
+        });
+        
+        if (uploadResponse.ok) {
+            statusDiv.className = 'success';
+            statusDiv.textContent = `Upload successful! File ID: ${data.fileId}`;
+            console.log('Upload successful');
+        } else {
+            throw new Error(`Upload failed: ${uploadResponse.status} ${uploadResponse.statusText}`);
         }
-      }
+        
+    } catch (error) {
+        statusDiv.className = 'error';
+        statusDiv.textContent = 'Error: ' + error.message;
+        console.error('Full error:', error);
+    }
+}
+
     </script>
   </body>
 </html>
