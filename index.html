@@ -65,14 +65,13 @@
 <body>
     <h1>2D Image to 3D Mesh Converter</h1>
     <div class="upload-container">
-        <input type="file" id="imageInput" accept="image/jpeg,image/jpg,image/png">
+        <input type="file" id="imageInput" accept="image/jpeg,image/jpg">
         <button id="uploadBtn" onclick="uploadImage()">Upload & Convert</button>
     </div>
     <div id="status"></div>
     <div id="console"></div>
 
     <script>
-        // REPLACE THIS WITH YOUR ACTUAL API GATEWAY URL
         const API_URL = 'https://si7isj93lf.execute-api.eu-north-1.amazonaws.com/prod/upload';
         
         function log(message) {
@@ -89,7 +88,6 @@
             const uploadBtn = document.getElementById('uploadBtn');
             const consoleDiv = document.getElementById('console');
             
-            // Clear previous logs
             consoleDiv.innerHTML = '';
             
             if (!fileInput.files[0]) {
@@ -101,16 +99,14 @@
             const file = fileInput.files[0];
             uploadBtn.disabled = true;
             
-            log(`📁 Selected file: ${file.name}`);
-            log(`📊 File size: ${(file.size / 1024).toFixed(2)} KB`);
-            log(`📝 File type: ${file.type}`);
+            log(`📁 File: ${file.name} (${(file.size / 1024).toFixed(2)} KB)`);
             
             statusDiv.className = 'info';
-            statusDiv.textContent = '⏳ Step 1: Getting presigned POST data from AWS...';
+            statusDiv.textContent = '⏳ Getting presigned POST data...';
             
             try {
-                // Step 1: Get presigned POST data from Lambda
-                log('🌐 Calling API Gateway...');
+                // Step 1: Get presigned POST data
+                log('🌐 Requesting presigned POST from Lambda...');
                 
                 const response = await fetch(API_URL, {
                     method: 'POST',
@@ -119,64 +115,62 @@
                     }
                 });
                 
-                log(`✅ API Gateway response: ${response.status}`);
+                log(`✅ Lambda response: ${response.status}`);
                 
                 if (!response.ok) {
                     const errorText = await response.text();
-                    log(`❌ API Error: ${errorText}`);
+                    log(`❌ Error: ${errorText}`);
                     throw new Error(`API failed: ${response.status}`);
                 }
                 
                 const data = await response.json();
                 log(`📦 Got presigned POST data`);
                 log(`🆔 File ID: ${data.fileId}`);
-                log(`📄 Target filename: ${data.filename}`);
+                log(`📄 Filename: ${data.filename}`);
+                log(`🔗 S3 URL: ${data.uploadData.url}`);
                 
-                // Step 2: Create FormData with all fields from presigned POST
-                statusDiv.textContent = '⏳ Step 2: Preparing upload data...';
+                // Step 2: Create FormData with all fields
+                statusDiv.textContent = '⏳ Preparing FormData...';
                 const formData = new FormData();
                 
-                // Add all the fields returned by generate_presigned_post
-                log('📋 Adding POST fields...');
+                log('📋 Adding fields from Lambda response:');
                 Object.entries(data.uploadData.fields).forEach(([key, value]) => {
                     formData.append(key, value);
-                    log(`  ➕ ${key}: ${value.substring(0, 50)}...`);
+                    log(`  ✓ ${key}`);
                 });
                 
-                // IMPORTANT: File must be added LAST
+                // File MUST be added LAST
                 formData.append('file', file);
-                log(`  ➕ file: ${file.name}`);
+                log(`  ✓ file: ${file.name}`);
                 
-                // Step 3: Upload to S3 using presigned POST
-                statusDiv.textContent = '⏳ Step 3: Uploading to S3...';
-                log(`☁️ Posting to S3: ${data.uploadData.url}`);
+                // Step 3: Upload to S3
+                statusDiv.textContent = '⏳ Uploading to S3...';
+                log('☁️ POSTing to S3...');
                 
                 const uploadResponse = await fetch(data.uploadData.url, {
                     method: 'POST',
                     body: formData
-                    // DO NOT set Content-Type header - browser will set it automatically with boundary
                 });
                 
-                log(`📡 S3 response: ${uploadResponse.status} ${uploadResponse.statusText}`);
+                log(`📡 S3 response: ${uploadResponse.status}`);
                 
                 if (uploadResponse.ok || uploadResponse.status === 204) {
-                    // Success!
-                    log('✅ Upload completed successfully!');
+                    log('✅ SUCCESS!');
                     statusDiv.className = 'success';
-                    statusDiv.textContent = `✅ SUCCESS! File uploaded`;
-                    statusDiv.innerHTML += `<br><small>Filename: ${data.filename}</small>`;
+                    statusDiv.textContent = `✅ Uploaded successfully!`;
+                    statusDiv.innerHTML += `<br><small>${data.filename}</small>`;
                     statusDiv.innerHTML += `<br><small>File ID: ${data.fileId}</small>`;
                 } else {
                     const errorText = await uploadResponse.text();
-                    log(`❌ S3 Error Response: ${errorText}`);
+                    log(`❌ S3 Error: ${errorText}`);
                     throw new Error(`S3 upload failed: ${uploadResponse.status}`);
                 }
                 
             } catch (error) {
                 log(`❌ ERROR: ${error.message}`);
                 statusDiv.className = 'error';
-                statusDiv.textContent = '❌ Upload failed: ' + error.message;
-                console.error('Full error:', error);
+                statusDiv.textContent = '❌ ' + error.message;
+                console.error('Error:', error);
             } finally {
                 uploadBtn.disabled = false;
             }
