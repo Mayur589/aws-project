@@ -106,12 +106,11 @@
             log(`📝 File type: ${file.type}`);
             
             statusDiv.className = 'info';
-            statusDiv.textContent = '⏳ Step 1: Getting presigned URL from AWS...';
+            statusDiv.textContent = '⏳ Step 1: Getting presigned POST data from AWS...';
             
             try {
-                // Step 1: Get presigned URL from Lambda via API Gateway
+                // Step 1: Get presigned POST data from Lambda
                 log('🌐 Calling API Gateway...');
-                log(`🔗 API URL: ${API_URL}`);
                 
                 const response = await fetch(API_URL, {
                     method: 'POST',
@@ -120,7 +119,7 @@
                     }
                 });
                 
-                log(`✅ API Gateway response: ${response.status} ${response.statusText}`);
+                log(`✅ API Gateway response: ${response.status}`);
                 
                 if (!response.ok) {
                     const errorText = await response.text();
@@ -129,35 +128,49 @@
                 }
                 
                 const data = await response.json();
-                log(`📦 Got response data`);
-                log(`📄 Filename: ${data.filename}`);
+                log(`📦 Got presigned POST data`);
                 log(`🆔 File ID: ${data.fileId}`);
+                log(`📄 Target filename: ${data.filename}`);
                 
-                // Step 2: Upload to S3 using presigned URL
-                statusDiv.textContent = '⏳ Step 2: Uploading to S3...';
-                log('☁️ Starting S3 upload...');
+                // Step 2: Create FormData with all fields from presigned POST
+                statusDiv.textContent = '⏳ Step 2: Preparing upload data...';
+                const formData = new FormData();
                 
-                const uploadResponse = await fetch(data.uploadUrl, {
-                    method: 'PUT',
-                    body: file,
-                    headers: {
-                        'Content-Type': 'image/jpeg'
-                    }
+                // Add all the fields returned by generate_presigned_post
+                log('📋 Adding POST fields...');
+                Object.entries(data.uploadData.fields).forEach(([key, value]) => {
+                    formData.append(key, value);
+                    log(`  ➕ ${key}: ${value.substring(0, 50)}...`);
+                });
+                
+                // IMPORTANT: File must be added LAST
+                formData.append('file', file);
+                log(`  ➕ file: ${file.name}`);
+                
+                // Step 3: Upload to S3 using presigned POST
+                statusDiv.textContent = '⏳ Step 3: Uploading to S3...';
+                log(`☁️ Posting to S3: ${data.uploadData.url}`);
+                
+                const uploadResponse = await fetch(data.uploadData.url, {
+                    method: 'POST',
+                    body: formData
+                    // DO NOT set Content-Type header - browser will set it automatically with boundary
                 });
                 
                 log(`📡 S3 response: ${uploadResponse.status} ${uploadResponse.statusText}`);
                 
-                if (!uploadResponse.ok) {
+                if (uploadResponse.ok || uploadResponse.status === 204) {
+                    // Success!
+                    log('✅ Upload completed successfully!');
+                    statusDiv.className = 'success';
+                    statusDiv.textContent = `✅ SUCCESS! File uploaded`;
+                    statusDiv.innerHTML += `<br><small>Filename: ${data.filename}</small>`;
+                    statusDiv.innerHTML += `<br><small>File ID: ${data.fileId}</small>`;
+                } else {
                     const errorText = await uploadResponse.text();
-                    log(`❌ S3 Error: ${errorText}`);
+                    log(`❌ S3 Error Response: ${errorText}`);
                     throw new Error(`S3 upload failed: ${uploadResponse.status}`);
                 }
-                
-                // Success!
-                log('✅ Upload completed successfully!');
-                statusDiv.className = 'success';
-                statusDiv.textContent = `✅ SUCCESS! File uploaded: ${data.filename}`;
-                statusDiv.innerHTML += `<br><small>File ID: ${data.fileId}</small>`;
                 
             } catch (error) {
                 log(`❌ ERROR: ${error.message}`);
