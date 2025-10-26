@@ -5,95 +5,329 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>2D to 3D Converter</title>
     <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
         body {
-            font-family: Arial, sans-serif;
-            max-width: 600px;
-            margin: 50px auto;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             padding: 20px;
-            background-color: #f9f9f9;
+            position: relative;
+            overflow-x: hidden;
         }
-        .upload-container {
-            border: 2px dashed #ccc;
-            padding: 40px;
+
+        /* Animated background elements */
+        .bg-animation {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            overflow: hidden;
+            pointer-events: none;
+        }
+
+        .cube {
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            animation: float 20s infinite ease-in-out;
+        }
+
+        .cube:nth-child(1) { top: 10%; left: 10%; animation-delay: 0s; }
+        .cube:nth-child(2) { top: 70%; left: 80%; animation-delay: 4s; }
+        .cube:nth-child(3) { top: 40%; left: 70%; animation-delay: 2s; }
+        .cube:nth-child(4) { top: 60%; left: 20%; animation-delay: 6s; }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0) rotate(0deg); }
+            50% { transform: translateY(-30px) rotate(180deg); }
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 24px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 700px;
+            width: 100%;
+            padding: 50px;
+            position: relative;
+            z-index: 1;
+            animation: slideUp 0.6s ease-out;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .header {
             text-align: center;
-            border-radius: 10px;
-            background-color: white;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 40px;
         }
-        input[type="file"] {
-            margin: 10px 0;
-        }
-        button {
-            background-color: #4CAF50;
-            color: white;
-            padding: 15px 30px;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 16px;
-            margin-top: 20px;
-        }
-        button:hover:not(:disabled) {
-            background-color: #45a049;
-        }
-        button:disabled {
-            background-color: #cccccc;
-            cursor: not-allowed;
-        }
-        #status {
-            margin-top: 20px;
-            padding: 15px;
-            border-radius: 5px;
-            text-align: center;
-        }
-        .success {
-            background-color: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
-        }
-        .error {
-            background-color: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
-        }
-        .info {
-            background-color: #d1ecf1;
-            color: #0c5460;
-            border: 1px solid #bee5eb;
-        }
-        #console {
-            margin-top: 20px;
-            padding: 15px;
-            background: #f5f5f5;
-            border-radius: 5px;
-            font-family: 'Courier New', monospace;
-            font-size: 12px;
-            max-height: 400px;
-            overflow-y: auto;
-            text-align: left;
-            white-space: pre-wrap;
-        }
+
         h1 {
+            font-size: 2.5rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+
+        .subtitle {
+            color: #666;
+            font-size: 1.1rem;
+        }
+
+        .upload-area {
+            border: 3px dashed #667eea;
+            border-radius: 16px;
+            padding: 60px 40px;
             text-align: center;
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%);
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .upload-area:hover {
+            border-color: #764ba2;
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+            transform: translateY(-2px);
+        }
+
+        .upload-icon {
+            font-size: 4rem;
+            margin-bottom: 20px;
+            animation: bounce 2s infinite;
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .upload-text {
+            font-size: 1.2rem;
             color: #333;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+
+        .upload-hint {
+            color: #999;
+            font-size: 0.9rem;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        .file-name {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f0f0f0;
+            border-radius: 8px;
+            color: #333;
+            font-weight: 500;
+            display: none;
+        }
+
+        .file-name.show {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .btn-convert {
+            width: 100%;
+            padding: 18px;
+            margin-top: 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-convert:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+        }
+
+        .btn-convert:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            box-shadow: none;
+            transform: none;
+        }
+
+        .status {
+            margin-top: 25px;
+            padding: 18px;
+            border-radius: 12px;
+            text-align: center;
+            font-weight: 500;
+            display: none;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .status.show {
+            display: block;
+        }
+
+        .status.success {
+            background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+            color: #155724;
+            border: 2px solid #28a745;
+        }
+
+        .status.error {
+            background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
+            color: #721c24;
+            border: 2px solid #dc3545;
+        }
+
+        .status.info {
+            background: linear-gradient(135deg, #d1ecf1 0%, #bee5eb 100%);
+            color: #0c5460;
+            border: 2px solid #17a2b8;
+        }
+
+        .console {
+            margin-top: 25px;
+            padding: 20px;
+            background: #1e1e1e;
+            border-radius: 12px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85rem;
+            max-height: 300px;
+            overflow-y: auto;
+            color: #00ff00;
+            box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.5);
+        }
+
+        .console::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .console::-webkit-scrollbar-track {
+            background: #2a2a2a;
+            border-radius: 4px;
+        }
+
+        .console::-webkit-scrollbar-thumb {
+            background: #666;
+            border-radius: 4px;
+        }
+
+        .console::-webkit-scrollbar-thumb:hover {
+            background: #888;
+        }
+
+        .loader {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+            vertical-align: middle;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 30px 20px;
+            }
+
+            h1 {
+                font-size: 2rem;
+            }
+
+            .upload-area {
+                padding: 40px 20px;
+            }
         }
     </style>
 </head>
 <body>
-    <h1>2D Image to 3D Mesh Converter</h1>
-    <div class="upload-container">
-        <label for="imageInput">Select a JPEG image:</label><br>
-        <input type="file" id="imageInput" accept="image/jpeg,image/jpg">
-        <br>
-        <button id="uploadBtn" onclick="uploadImage()">Upload & Convert to 3D</button>
+    <div class="bg-animation">
+        <div class="cube"></div>
+        <div class="cube"></div>
+        <div class="cube"></div>
+        <div class="cube"></div>
     </div>
-    <div id="status"></div>
-    <div id="console">Console logs will appear here...</div>
+
+    <div class="container">
+        <div class="header">
+            <h1>✨ 2D to 3D Converter</h1>
+            <p class="subtitle">Transform your images into stunning 3D meshes</p>
+        </div>
+
+        <div class="upload-area" onclick="document.getElementById('imageInput').click()">
+            <div class="upload-icon">📸</div>
+            <div class="upload-text">Click to upload or drag & drop</div>
+            <div class="upload-hint">JPEG images only • Max 10MB</div>
+            <input type="file" id="imageInput" accept="image/jpeg,image/jpg" onchange="handleFileSelect()">
+        </div>
+
+        <div id="fileName" class="file-name"></div>
+
+        <button id="uploadBtn" class="btn-convert" onclick="uploadImage()">
+            Convert to 3D
+        </button>
+
+        <div id="status" class="status"></div>
+
+        <div id="console" class="console">Console logs will appear here...</div>
+    </div>
 
     <script>
-        // Your API Gateway URL - DO NOT CHANGE THIS
         const API_URL = 'https://si7isj93lf.execute-api.eu-north-1.amazonaws.com/prod/upload';
         
+        function handleFileSelect() {
+            const fileInput = document.getElementById('imageInput');
+            const fileNameDiv = document.getElementById('fileName');
+            const file = fileInput.files[0];
+            
+            if (file) {
+                fileNameDiv.textContent = `📄 Selected: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
+                fileNameDiv.classList.add('show');
+            }
+        }
+
         function log(message) {
             const consoleDiv = document.getElementById('console');
             const time = new Date().toLocaleTimeString('en-US', { hour12: false });
@@ -106,7 +340,7 @@
         function updateStatus(text, className) {
             const statusDiv = document.getElementById('status');
             statusDiv.textContent = text;
-            statusDiv.className = className;
+            statusDiv.className = `status ${className} show`;
         }
         
         async function uploadImage() {
@@ -114,21 +348,21 @@
             const uploadBtn = document.getElementById('uploadBtn');
             const consoleDiv = document.getElementById('console');
             
-            // Clear console
             consoleDiv.textContent = '';
             
             const file = fileInput.files[0];
             if (!file) {
-                updateStatus('Please select an image first', 'error');
+                updateStatus('❌ Please select an image first', 'error');
                 return;
             }
             
             if (file.type !== 'image/jpeg') {
-                updateStatus('Please select a JPEG image only', 'error');
+                updateStatus('❌ Please select a JPEG image only', 'error');
                 return;
             }
             
             uploadBtn.disabled = true;
+            uploadBtn.innerHTML = '<span class="loader"></span> Processing...';
             updateStatus('⏳ Getting upload credentials...', 'info');
             
             log('🚀 Starting upload process');
@@ -136,7 +370,6 @@
             log(`🔗 API URL: ${API_URL}`);
             
             try {
-                // Step 1: Fetch presigned POST data from Lambda (no body needed)
                 log('🌐 Fetching presigned POST from API Gateway...');
                 const apiResponse = await fetch(API_URL, {
                     method: 'POST',
@@ -158,7 +391,6 @@
                 log(`🆔 File ID: ${apiData.fileId || 'N/A'}`);
                 log(`📄 Filename: ${apiData.filename || 'N/A'}`);
                 
-                // Validate response - must have uploadData with url and fields
                 if (!apiData.uploadData || !apiData.uploadData.url || !apiData.uploadData.fields) {
                     log('❌ Invalid API response: ' + JSON.stringify(apiData, null, 2));
                     throw new Error('Invalid response from server - missing uploadData structure');
@@ -173,21 +405,17 @@
                     log(`  - ${key}: ${displayValue}`);
                 });
                 
-                // Step 2: Prepare FormData for S3 POST
-                updateStatus('⏳ Preparing upload data...', 'info');
+                updateStatus('⏳ Uploading to cloud storage...', 'info');
                 const formData = new FormData();
                 
-                // Add all fields to FormData
                 Object.entries(fields).forEach(([key, value]) => {
                     formData.append(key, value);
                 });
                 
-                // Add file as 'file' field (S3 expects this name)
                 formData.append('file', file);
                 log('📦 FormData ready with file attached');
                 
-                // Step 3: POST to S3 with FormData (no headers needed - browser sets multipart/form-data)
-                updateStatus('⏳ Uploading to S3...', 'info');
+                updateStatus('⏳ Converting to 3D...', 'info');
                 log('☁️ Sending POST to S3...');
                 
                 const s3Response = await fetch(url, {
@@ -202,12 +430,12 @@
                 
                 if (s3Response.ok || s3Response.status === 204) {
                     log('🎉 S3 Upload SUCCESS!');
-                    updateStatus(`✅ Success! File: ${apiData.filename || 'uploaded'}`, 'success');
+                    updateStatus(`✅ Success! Your 3D model is being processed: ${apiData.filename || 'uploaded'}`, 'success');
                     log(`🔗 Stored as: ${apiData.filename || 'unknown path'}`);
                     log(`🆔 Processing ID: ${apiData.fileId || 'N/A'}`);
                     
-                    // Reset file input
                     fileInput.value = '';
+                    document.getElementById('fileName').classList.remove('show');
                 } else {
                     log(`❌ S3 Upload Failed: ${s3Response.status}`);
                     throw new Error(`S3 rejected upload: ${s3Response.status} - ${s3Text}`);
@@ -219,9 +447,45 @@
                 console.error('Upload error details:', error);
             } finally {
                 uploadBtn.disabled = false;
-                updateStatus('', ''); // Clear status
+                uploadBtn.innerHTML = 'Convert to 3D';
             }
         }
+
+        // Drag and drop functionality
+        const uploadArea = document.querySelector('.upload-area');
+        
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            uploadArea.addEventListener(eventName, preventDefaults, false);
+        });
+        
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+        
+        ['dragenter', 'dragover'].forEach(eventName => {
+            uploadArea.addEventListener(eventName, () => {
+                uploadArea.style.borderColor = '#764ba2';
+                uploadArea.style.background = 'linear-gradient(135deg, rgba(102, 126, 234, 0.15) 0%, rgba(118, 75, 162, 0.15) 100%)';
+            });
+        });
+        
+        ['dragleave', 'drop'].forEach(eventName => {
+            uploadArea.addEventListener(eventName, () => {
+                uploadArea.style.borderColor = '#667eea';
+                uploadArea.style.background = 'linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%)';
+            });
+        });
+        
+        uploadArea.addEventListener('drop', (e) => {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            
+            if (files.length > 0) {
+                document.getElementById('imageInput').files = files;
+                handleFileSelect();
+            }
+        });
     </script>
 </body>
 </html>
